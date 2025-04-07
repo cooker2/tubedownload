@@ -72,7 +72,4 @@ def get_video_info():
         logging.error("General Error in /get_video_info", exc_info=True)
         return jsonify({"error": str(e), "details": traceback.format_exc()}), 500
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    logging.info(f"Starting server on port {port}")
-    app.run(debug=True, host="0.0.0.0", port=port)
+
