@@ -1,6 +1,6 @@
-
 from flask import Flask, request, jsonify
 from yt_dlp import YoutubeDL
+import os
 
 app = Flask(__name__)
 
@@ -23,7 +23,7 @@ def get_video_info():
                     {
                         "format_id": f["format_id"],
                         "ext": f["ext"],
-                        "resolution": f.get("resolution") or f"{f.get("width")}x{f.get("height")}",
+                        "resolution": f.get("resolution") or f"{f.get('width')}x{f.get('height')}",
                         "filesize": f.get("filesize"),
                         "url": f["url"],
                     }
@@ -39,4 +39,5 @@ def index():
     return "YouTube Downloader API is running"
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0")
+    port = int(os.environ.get("PORT", 5000))  # Railway 需要绑定 PORT 环境变量
+    app.run(debug=True, host="0.0.0.0", port=port)
