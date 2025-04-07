@@ -1,3 +1,4 @@
-flask
-yt-dlp
-gunicorn
+flask==2.2.5
+yt-dlp==2024.4.9
+gunicorn==20.1.0
+requests==2.31.0
