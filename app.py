@@ -1,8 +1,12 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from yt_dlp import YoutubeDL
 import os
 
 app = Flask(__name__)
+
+@app.route("/")
+def index():
+    return render_template("index.html")
 
 @app.route("/get_video_info", methods=["POST"])
 def get_video_info():
@@ -34,10 +38,6 @@ def get_video_info():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/")
-def index():
-    return "YouTube Downloader API is running"
-
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  # Railway 需要绑定 PORT 环境变量
-    app.run(debug=True, host="0.0.0.0", port=port)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(debug=False, host="0.0.0.0", port=port)

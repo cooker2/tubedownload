@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>YouTube Downloader</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 40px; }
+    input[type="text"] { width: 400px; padding: 10px; }
+    button { padding: 10px 20px; margin-left: 10px; }
+    img { max-width: 300px; margin-top: 20px; }
+    .format { margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>YouTube Downloader</h1>
+  <input type="text" id="url" placeholder="Enter YouTube URL">
+  <button onclick="getVideoInfo()">Get Info</button>
+
+  <div id="result"></div>
+
+  <script>
+    async function getVideoInfo() {
+      const url = document.getElementById("url").value;
+      const response = await fetch("/get_video_info", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url })
+      });
+
+      const data = await response.json();
+      const resultDiv = document.getElementById("result");
+      resultDiv.innerHTML = "";
+
+      if (data.error) {
+        resultDiv.innerHTML = "<p style='color:red'>" + data.error + "</p>";
+        return;
+      }
+
+      const title = document.createElement("h2");
+      title.innerText = data.title;
+      resultDiv.appendChild(title);
+
+      if (data.thumbnail) {
+        const img = document.createElement("img");
+        img.src = data.thumbnail;
+        resultDiv.appendChild(img);
+      }
+
+      const formats = data.formats;
+      formats.forEach(f => {
+        const div = document.createElement("div");
+        div.className = "format";
+        div.innerHTML = `
+          <strong>${f.resolution || "Unknown resolution
