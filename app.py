@@ -4,7 +4,7 @@ import logging
 from yt_dlp import YoutubeDL
 
 # 设置日志级别为 DEBUG，方便排查问题
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
 
@@ -15,7 +15,12 @@ def home():
 
 @app.route("/get_video_info", methods=["POST"])
 def get_video_info():
-    data = request.json
+    # 检查请求是否为 JSON 格式
+    if not request.is_json:
+        logging.error("Request is not in JSON format")
+        return jsonify({"error": "Request must be in JSON format"}), 400
+
+    data = request.get_json()
     url = data.get("url")
     if not url:
         logging.error("URL is missing in the request")
@@ -32,11 +37,11 @@ def get_video_info():
                 "thumbnail": info.get("thumbnail"),
                 "formats": [
                     {
-                        "format_id": f["format_id"],
-                        "ext": f["ext"],
-                        "resolution": f.get("resolution") or f"{f.get('width')}x{f.get('height')}",
-                        "filesize": f.get("filesize"),
-                        "url": f["url"],
+                        "format_id": f.get("format_id", "N/A"),
+                        "ext": f.get("ext", "N/A"),
+                        "resolution": f.get("resolution") or f"{f.get('width', 'N/A')}x{f.get('height', 'N/A')}",
+                        "filesize": f.get("filesize", "N/A"),
+                        "url": f.get("url", "N/A"),
                     }
                     for f in formats if f.get("url")
                 ],
