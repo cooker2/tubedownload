@@ -1,4 +1,6 @@
 fastapi
-uvicorn
+uvicorn[standard]
 yt-dlp
-supabase
+boto3
+requests
+python-multipart
