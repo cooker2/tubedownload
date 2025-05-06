@@ -297,7 +297,7 @@ async def queue_download(
         return JSONResponse({"status": "error", "message": "已达最大并发限制。"})
 
     active_tasks[user_id].add((url, format_id))
-    await task_queues[user_id].put((url, format_id, limit_rate))
+    await task_queues[user_id].put((url, format_id))
 
     return JSONResponse({"status": "queued"})
 
