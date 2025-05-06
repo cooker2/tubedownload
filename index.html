@@ -1,166 +1,270 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <link rel="icon" href="https://www.youtube.com/s/desktop/1fabcff3/img/favicon_144.png" type="image/png">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VideoMAX - YouTube Downloader</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    @keyframes flowing-bar {
-      0% { background-position: 0% 50%; }
-      100% { background-position: 100% 50%; }
-    }
-
-    body {
-      background-color: #0d0437;
-    }
-
-    .custom-header {
-      background-color: #0d0437;
-    }
+    body { background-color: #0d0437; }
+    .custom-header { background-color: #0d0437; }
   </style>
-</head>
-<body class="text-white font-sans">
+  <script>
+    document.cookie = "user_id=debug_user; path=/";
 
-  <!-- Header -->
+    function extractVideoId(url) {
+      try {
+        const parsed = new URL(url);
+        let id = parsed.searchParams.get("v");
+        if (id) return id;
+        const match = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})(?:&|$)/);
+        return match ? match[1] : "";
+      } catch (e) {
+        console.error("提取 videoId 失败:", e);
+        return "";
+      }
+    }
+  </script>
+</head>
+
+<body class="text-white font-sans">
   <section class="custom-header text-center py-16 px-4">
-    <h1 class="text-4xl md:text-5xl font-bold mb-4">Online Video <span class="text-[#e11d48]">Downloader</span></h1>
-    <p class="text-gray-300 mb-8 max-w-xl mx-auto">Paste the YouTube link below & click</p>
+    <h1 class="text-4xl md:text-5xl font-bold mb-4">
+      Online Video <span class="text-[#e11d48]">Downloader</span>
+    </h1>
+    <p class="text-gray-300 mb-8 max-w-xl mx-auto">
+      Paste the YouTube link below & click
+    </p>
     <div class="flex justify-center gap-2 flex-wrap">
-      <input id="url" type="text" placeholder="Paste YouTube Video Link Here..." class="w-80 md:w-[500px] px-4 py-3 rounded-full text-black" />
-      <button onclick="fetchFormats()" class="px-6 py-3 bg-[#e11d48] hover:bg-[#be123c] text-white rounded-full font-semibold shadow transition duration-300">Download</button>
+      <input id="url" type="text" placeholder="Paste YouTube Video Link Here..." 
+        class="w-80 md:w-[500px] px-4 py-3 rounded-full text-black" />
+      <button onclick="document.getElementById('url').blur(); fetchFormats()" 
+        class="px-6 py-3 bg-[#e11d48] hover:bg-[#be123c] text-white rounded-full font-semibold shadow transition duration-300">
+        Download
+      </button>
     </div>
   </section>
 
-  <!-- Video Info -->
   <section class="text-center py-10">
     <div id="status" class="text-yellow-400 mb-2"></div>
     <div id="video-info" class="space-y-4"></div>
     <div id="task-result" class="text-yellow-400 font-semibold"></div>
-    <div id="progress-bar" class="hidden w-1/3 md:w-1/4 h-4 bg-gray-700 rounded-full mx-auto mt-6 overflow-hidden">
-      <div id="progress-fill" class="h-full w-0 text-xs text-black font-bold text-center transition-all duration-300 bg-[length:400%_400%] bg-[linear-gradient(270deg,#00F260,#0575E6)] animate-[flowing-bar_2s_linear_infinite]">
-        0%
+
+    <div id="download-status" class="hidden">
+      <div class="w-full max-w-md mx-auto mt-6">
+        <div class="text-center mb-2 text-white" id="progress-text">0%</div>
+        <div class="bg-gray-700 rounded h-6 w-full">
+          <div id="new-progress-bar" 
+            class="bg-green-500 h-full rounded text-xs text-center text-white leading-6" 
+            style="width: 0%">0%</div>
+        </div>
       </div>
     </div>
   </section>
 
   <script>
-    async function fetchFormats() {
-      const oldLink = document.getElementById("download-link");
-      if (oldLink) oldLink.remove();
-      const url = document.getElementById("url").value;
-      document.getElementById("status").innerText = "⏳ Parsing video...";
-      document.getElementById("video-info").innerHTML = "";
-      document.getElementById("task-result").innerText = "";
-      document.getElementById("progress-bar").classList.add("hidden");
-      document.getElementById("progress-fill").style.width = "0%";
-
-      try {
-        const res = await fetch("/fetch_formats", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url })
-        });
-        const data = await res.json();
-        if (data.status === "success") {
-          document.getElementById("status").innerText = "";
-          document.getElementById("video-info").innerHTML = `
-            <img src="${data.thumbnail}" class="mx-auto rounded-lg shadow-lg max-w-xs" />
-            <div class="text-xl font-bold mt-2 mx-auto max-w-[30%] truncate overflow-hidden whitespace-nowrap" title="${data.title}">
-              ${data.title}
-            </div>
-
-            <p class="text-sm text-gray-400">Duration: ${data.duration}</p>
-            <div class="text-lg font-semibold text-yellow-400 mt-4">🎬 Choose a format to download:</div>
-            <div class="flex flex-wrap justify-center gap-2 mt-4">
-        ${data.formats.map(f => `
-  <button onclick="queueDownload('${url}', '${f.format_id}')" 
-          class="px-3 py-2 bg-[#e11d48] hover:bg-[#be123c] rounded text-white text-sm">
-    ${f.format_note} (.${f.ext})
-  </button>
-`).join("")}
 
 
+async function fetchFormats() {
+  const url = document.getElementById("url").value;
+  document.getElementById("status").innerText = "⏳ Parsing video...";
+  document.getElementById("video-info").innerHTML = "";
+  document.getElementById("task-result").innerText = "";
+  document.getElementById("download-status").classList.add("hidden");
 
-            </div>`;
-        } else {
-          document.getElementById("status").innerText = "❌ Failed to parse: " + data.message;
+  try {
+    const res = await fetch("/fetch_formats", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url })
+    });
+    const data = await res.json();
+
+    if (data.status === "success") {
+      // 过滤、分组逻辑不变
+      const wantedNotes = ["240p","360p","720p","1080p","1440p","2160p"];
+      const candidates = data.formats.filter(f => {
+        const note = (f.format_note || "").toLowerCase();
+        return wantedNotes.some(w => note.includes(w)) && ["mp4","webm"].includes(f.ext);
+      });
+      const grouped = {};
+      for (const f of candidates) {
+        const key = (f.format_note || `${f.height}p`).toLowerCase();
+        if (!grouped[key] || (f.filesize||0) > (grouped[key].filesize||0)) {
+          grouped[key] = f;
         }
-      } catch (err) {
-        document.getElementById("status").innerText = "Request failed. Please check the URL format.";
+      }
+      const finalFormats = Object.values(grouped);
+
+      // 生成：左侧分辨率+大小，右侧 Download 按钮
+  const formatsHtml = finalFormats.map(f => {
+    const note = f.format_note || `${f.height}p`;
+    const sizeMB = f.filesize
+      ? (f.filesize / (1024 * 1024)).toFixed(1)
+      : 0;
+    const sizeText = f.filesize
+      ? `${sizeMB}MB`
+      : "未知大小";
+
+    const isTooBig = sizeMB > 200;
+
+    const buttonHtml = isTooBig
+      ? `<button disabled class="ml-4 px-4 py-2 bg-gray-600 rounded text-white text-sm cursor-not-allowed">
+            超出大小限制
+         </button>`
+      : `<button
+            onclick="queueDownload('${url}','${f.format_id}')"
+            class="ml-4 px-4 py-2 bg-[#e11d48] hover:bg-[#be123c] rounded text-white text-sm">
+            Download
+         </button>`;
+
+    return `
+        <div class="flex justify-between items-center w-full max-w-md px-4 py-2 bg-gray-800 rounded">
+          <div class="flex-1 text-left text-white">
+            ${note} · ${sizeText}
+          </div>
+          ${buttonHtml}
+        </div>
+    `;
+}).join("");
+
+      const fullTitle = data.title || "";
+      const displayTitle = fullTitle.length > 20
+        ? fullTitle.slice(0,20) + "…"
+        : fullTitle;
+
+      document.getElementById("status").innerText = "";
+      document.getElementById("video-info").innerHTML = `
+        <img src="${data.thumbnail}" class="mx-auto rounded-lg shadow-lg max-w-xs" />
+        <div class="text-xl mt-2 mx-auto max-w-[80%] truncate" title="${data.title}">
+          ${displayTitle}
+        </div>
+        <p class="text-sm text-gray-400">Duration: ${data.duration}</p>
+        <div class="flex flex-col items-center gap-3 mt-4">
+          ${formatsHtml}
+        </div>
+      `;
+    } else {
+      document.getElementById("status").innerText = "❌ Failed to parse: " + data.message;
+    }
+  } catch (err) {
+    console.error("解析异常:", err);
+    document.getElementById("status").innerText = "❌ Request failed. Please check the URL.";
+  }
+}
+
+
+async function queueDownload(url, format_id) {
+  
+  const progressBar = document.getElementById("new-progress-bar");
+  const progressText = document.getElementById("progress-text");
+  progressBar.style.width = "0%";
+  progressBar.innerText = "0%";
+  progressText.innerText = "0%";
+
+  document.getElementById("task-result").innerText = "📥 Submitting download task...";
+  document.getElementById("download-status").classList.remove("hidden");
+  try {
+    const res = await fetch(`/queue_download?url=${encodeURIComponent(url)}&format_id=${format_id}`);
+    const data = await res.json();
+
+    if (data.status === "queued") {
+      document.getElementById("task-result").innerText = "✅ Task added to queue";
+      document.getElementById("download-status").classList.remove("hidden");
+      checkDownloadStatus(url, format_id);
+    } else if (data.status === "done" && data.download_url) {
+      document.getElementById("task-result").innerHTML = `
+        <div class="text-green-400 font-bold">✅ Already downloaded.</div>
+        <a href="${data.download_url}" target="_blank" class="mt-4 inline-block px-6 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600">Open File</a>
+      `;
+      document.getElementById("download-status").classList.remove("hidden");
+    } else {
+      document.getElementById("task-result").innerText = "⚠️ " + (data.message || "Unknown error.");
+    }
+  } catch (err) {
+    document.getElementById("task-result").innerText = "❌ Download request failed.";
+  }
+}
+
+    
+async function checkDownloadStatus(url, format_id) {
+  const videoId = extractVideoId(url);
+  const progressBar = document.getElementById("new-progress-bar");
+  const progressText = document.getElementById("progress-text");
+  const statusEl = document.getElementById("task-result");
+
+  function getUserId() {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.startsWith('user_id=')) {
+        return cookie.substring('user_id='.length);
       }
     }
+    return 'debug_user'; // 默认值
+  }
 
-    async function queueDownload(url, format_id) {
-      document.getElementById("task-result").innerText = "📥 Submitting download task...";
-      try {
-        const res = await fetch(`/queue_download?url=${encodeURIComponent(url)}&format_id=${format_id}`);
-        const data = await res.json();
-        if (data.status === "queued") {
-          document.getElementById("task-result").innerText = "✅ Task added to queue";
-          document.getElementById("progress-bar").classList.remove("hidden");
-          checkDownloadStatus(url, format_id);
-        } else {
-          document.getElementById("task-result").innerText = "⚠️ " + data.message;
-        }
-      } catch (err) {
-        document.getElementById("task-result").innerText = "❌ Download request failed.";
-      }
+  const userId = getUserId();
+  const wsProtocol = location.protocol === "https:" ? "wss" : "ws";
+  const wsUrl = `${wsProtocol}://${location.host}/ws/progress?user_id=${userId}&video_id=${videoId}`;
+  const socket = new WebSocket(wsUrl);
+
+  console.log(`[WebSocket] Connecting to ${wsUrl}...`);
+
+  socket.onopen = () => {
+    console.log("[WebSocket] Connected!");
+  };
+
+  socket.onmessage = async (event) => {
+  const data = JSON.parse(event.data);
+
+  if (data.status === 'uploaded' && data.download_url) {
+    socket.close();
+
+    progressBar.style.width = "100%";
+    progressBar.innerText = "100%";
+    progressBar.className = "bg-blue-500 h-full rounded text-xs text-center text-white leading-6";
+
+    statusEl.innerHTML = `
+      <div class="text-green-400 font-bold">✅ Download and upload completed!</div>
+      <a href="${data.download_url}" target="_blank" class="mt-4 inline-block px-6 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600">Open File</a>
+    `;
+    progressText.innerText = "Completed";
+
+  } else if (data.status === 'preparing') {
+    progressText.innerText = "Preparing download file, please wait...";
+    statusEl.innerHTML = `<div class="text-yellow-400 font-bold">📦 Preparing your download, please wait...</div>`;
+
+  } else if (data.status === 'downloading' && data.percent) {
+    // 🔥 新增：下载中实时更新进度
+    const percent = parseFloat(data.percent.replace('%', '')) || 0;
+    const displayPercent = `${percent.toFixed(1)}%`;
+    progressBar.style.width = displayPercent;
+    progressBar.innerText = displayPercent;
+    progressText.innerText = `Downloading: ${displayPercent} | Speed: ${data.speed || '-'} | ETA: ${data.eta || '-'}`;
+  }
+};
+
+  socket.onerror = (err) => {
+    console.error("[WebSocket] 连接错误", err);
+  };
+
+  socket.onclose = () => {
+    console.log("[WebSocket] 连接关闭");
+  };
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const urlInput = document.getElementById('url');
+  urlInput.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault(); // 阻止默认的表单提交
+      urlInput.blur();         // 失焦
+      fetchFormats();          // 执行解析
     }
+  });
+});
 
-    async function checkDownloadStatus(url, format_id) {
-      const resultEl = document.getElementById("task-result");
-      const videoId = new URL(url).searchParams.get("v");
-      const fillEl = document.getElementById("progress-fill");
-
-      const check = async () => {
-        try {
-          const statusRes = await fetch(`/status?url=https://youtube.com/watch?v=${videoId}&format_id=${format_id}`);
-          const statusData = await statusRes.json();
-          if (statusData.status === "done") {
-            fillEl.style.width = "100%";
-            fillEl.innerText = "100%";
-            fillEl.classList.remove("animate-[flowing-bar_2s_linear_infinite]");
-            fillEl.style.background = "#d1d5db";
-            resultEl.innerHTML = `<span class=text-yellow-400 font-bold text-base mt-10'>✅ Download complete!</span>`;
-            const existing = document.getElementById("download-link");
-            if (!existing) {
-              const downloadLink = document.createElement("a");
-downloadLink.id = "download-link";
-downloadLink.href = `/downloads/${statusData.filename}`;
-downloadLink.innerHTML = "📁 <span class='align-middle'>Open file</span>";
-downloadLink.target = "_blank";
-downloadLink.className =
-  "mt-6 inline-block border border-[#e11d48] bg-white text-[#e11d48] text-sm font-semibold py-2 px-6 rounded-full shadow-md hover:bg-[#fef2f2] transition duration-300";
-document.getElementById("progress-bar").after(downloadLink);
-            }
-            clearInterval(timer);
-            return;
-          }
-
-          if (statusData.status === "downloading") {
-            const progressRes = await fetch(`/progress?url=https://youtube.com/watch?v=${videoId}`);
-            const progress = await progressRes.json();
-            fillEl.style.width = progress.percent;
-            fillEl.innerText = progress.percent;
-            resultEl.innerHTML = `
-              📥 Downloading...<br>
-              <span class="text-sm text-yellow-400">
-                <b>Speed:</b> ${progress.speed} |
-                <b>Size:</b> ${progress.downloaded} / ${progress.total} |
-                <b>ETA:</b> ${progress.eta}
-              </span>`;
-          }
-        } catch (err) {
-          console.error("Polling error", err);
-        }
-      };
-
-      await check();
-      const timer = setInterval(check, 1000);
-    }
   </script>
-
 </body>
 </html>
