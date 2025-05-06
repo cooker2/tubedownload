@@ -16,6 +16,15 @@ from urllib.parse import urlparse, parse_qs
 
 main_loop = asyncio.get_event_loop()
 
+BASE_DIR    = Path(__file__).parent
+DOWNLOAD_DIR= BASE_DIR / "downloads"
+COOKIE_DIR  = BASE_DIR / "cookies"
+
+# 在挂载前创建
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+os.makedirs(COOKIE_DIR,   exist_ok=True)
+
+
 # 配置
 BASE_PUBLIC_R2_URL = 'https://pub-97c6ef35e0ee4959894afa0e3d88607f.r2.dev'
 
