@@ -400,3 +400,10 @@ async def admin_panel():
 async def start_server():
     os.makedirs(DOWNLOAD_DIR, exist_ok=True)
     print("服务启动成功")
+
+if __name__ == "__main__":
+    import os, uvicorn
+    # 从环境变量读取 PORT，默认 8000
+    port = int(os.environ.get("PORT", 8000))
+    # 绑定所有接口，监听该端口
+    uvicorn.run(app, host="0.0.0.0", port=port)
