@@ -36,7 +36,7 @@ r2_client = boto3.client(
 )
 
 app = FastAPI()
-app.mount("/downloads", StaticFiles(directory="downloads"), name="downloads")
+app.mount("/downloads",  StaticFiles(directory=str(DOWNLOAD_DIR)), name="downloads")
 
 class VideoRequest(BaseModel):
     url: str
