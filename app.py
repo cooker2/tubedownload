@@ -41,7 +41,6 @@ app.mount("/downloads",  StaticFiles(directory=str(DOWNLOAD_DIR)), name="downloa
 class VideoRequest(BaseModel):
     url: str
 
-DOWNLOAD_DIR = './downloads'
 MAX_CONCURRENT_PER_USER = 1
 
 progress_lock = Lock()
