@@ -26,6 +26,8 @@ os.makedirs(COOKIE_DIR,   exist_ok=True)
 
 
 # 配置
+
+
 BASE_PUBLIC_R2_URL = 'https://pub-97c6ef35e0ee4959894afa0e3d88607f.r2.dev'
 
 r2_client = boto3.client(
@@ -276,10 +278,10 @@ async def queue_download(
         filesize_mb = filesize / 1024 / 1024
 
         # ✅ 如果超过200MB，拒绝下载
-        if filesize and filesize_mb > 200:
+        if filesize and filesize_mb > 300:
             return JSONResponse({
                 "status": "error",
-                "message": f"该格式文件大小为 {filesize_mb:.2f}MB，已超过200MB限制，无法下载。"
+                "message": f"该格式文件大小为 {filesize_mb:.2f}MB，已超过300MB限制，无法下载。"
             })
 
     # ✅ 正常排队流程
