@@ -9,6 +9,53 @@
     body { background-color: #0d0437; }
     .custom-header { background-color: #0d0437; }
   </style>
+</head>
+
+<body class="text-white font-sans">
+  <!-- 页面顶部 -->
+  <section class="custom-header text-center py-16 px-4">
+    <h1 class="text-4xl md:text-5xl font-bold mb-4">
+      Online Video <span class="text-[#e11d48]">Downloader</span>
+    </h1>
+    <p class="text-gray-300 mb-8 max-w-xl mx-auto">
+      Paste the YouTube link below & click
+    </p>
+    <div class="flex justify-center gap-2 flex-wrap">
+      <input id="url" type="text" placeholder="Paste YouTube Video Link Here..."
+        class="w-80 md:w-[500px] px-4 py-3 rounded-full text-black" />
+      <button onclick="document.getElementById('url').blur(); fetchFormats()" 
+        class="px-6 py-3 bg-[#e11d48] hover:bg-[#be123c] text-white rounded-full font-semibold shadow transition duration-300">
+        Download
+      </button>
+    </div>
+  </section>
+
+  <!-- 视频信息展示 -->
+  <section class="text-center py-10">
+    <div id="status" class="text-yellow-400 mb-2"></div>
+    <div id="video-info" class="space-y-4"></div>
+    <div id="task-result" class="text-yellow-400 font-semibold"></div>
+
+    <!-- 下载进度展示 -->
+    <div id="download-status" class="hidden mt-4">
+      <div class="w-full flex justify-center">
+        <div class="w-full max-w-md flex items-center gap-3">
+          <div class="flex-1 bg-gray-200 rounded-full h-6 overflow-hidden">
+            <div id="new-progress-bar"
+              class="bg-blue-500 h-full rounded text-xs text-center text-white leading-6 transition-all duration-300"
+              style="width: 0%">0%</div>
+          </div>
+          <button id="cancel-download"
+            class="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 text-white rounded hidden">取消</button>
+        </div>
+      </div>
+      <div id="progress-text"
+        class="text-sm text-gray-400 mt-2 max-w-md mx-auto text-center">
+        0%
+      </div>
+    </div>
+  </section>
+
   <script>
     document.cookie = "user_id=debug_user; path=/";
 
@@ -20,251 +67,211 @@
         const match = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})(?:&|$)/);
         return match ? match[1] : "";
       } catch (e) {
-        console.error("提取 videoId 失败:", e);
         return "";
       }
     }
-  </script>
-</head>
 
-<body class="text-white font-sans">
-  <section class="custom-header text-center py-16 px-4">
-    <h1 class="text-4xl md:text-5xl font-bold mb-4">
-      Online Video <span class="text-[#e11d48]">Downloader</span>
-    </h1>
-    <p class="text-gray-300 mb-8 max-w-xl mx-auto">
-      Paste the YouTube link below & click
-    </p>
-    <div class="flex justify-center gap-2 flex-wrap">
-      <input id="url" type="text" placeholder="Paste YouTube Video Link Here..." 
-        class="w-80 md:w-[500px] px-4 py-3 rounded-full text-black" />
-      <button onclick="document.getElementById('url').blur(); fetchFormats()" 
-        class="px-6 py-3 bg-[#e11d48] hover:bg-[#be123c] text-white rounded-full font-semibold shadow transition duration-300">
-        Download
-      </button>
-    </div>
-  </section>
-
-  <section class="text-center py-10">
-    <div id="status" class="text-yellow-400 mb-2"></div>
-    <div id="video-info" class="space-y-4"></div>
-    <div id="task-result" class="text-yellow-400 font-semibold"></div>
-
-    <div id="download-status" class="hidden">
-      <div class="w-full max-w-md mx-auto mt-6">
-        <div class="text-center mb-2 text-white" id="progress-text">0%</div>
-        <div class="bg-gray-700 rounded h-6 w-full">
-          <div id="new-progress-bar" 
-            class="bg-green-500 h-full rounded text-xs text-center text-white leading-6" 
-            style="width: 0%">0%</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <script>
-
-
-async function fetchFormats() {
-  const url = document.getElementById("url").value;
-  document.getElementById("status").innerText = "⏳ Parsing video...";
-  document.getElementById("video-info").innerHTML = "";
-  document.getElementById("task-result").innerText = "";
-  document.getElementById("download-status").classList.add("hidden");
-
-  try {
-    const res = await fetch("/fetch_formats", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url })
-    });
-    const data = await res.json();
-
-    if (data.status === "success") {
-      // 过滤、分组逻辑不变
-      const wantedNotes = ["240p","360p","720p","1080p","1440p","2160p"];
-      const candidates = data.formats.filter(f => {
-        const note = (f.format_note || "").toLowerCase();
-        return wantedNotes.some(w => note.includes(w)) && ["mp4","webm"].includes(f.ext);
+    function restoreDownloadButtons() {
+      const allButtons = document.querySelectorAll("button[data-download]");
+      allButtons.forEach(btn => {
+        btn.disabled = false;
+        btn.classList.remove("opacity-50", "cursor-not-allowed");
+        btn.classList.add("hover:bg-[#be123c]");
       });
-      const grouped = {};
-      for (const f of candidates) {
-        const key = (f.format_note || `${f.height}p`).toLowerCase();
-        if (!grouped[key] || (f.filesize||0) > (grouped[key].filesize||0)) {
-          grouped[key] = f;
+    }
+
+    async function fetchFormats() {
+      const url = document.getElementById("url").value;
+      document.getElementById("status").innerText = "⏳ Parsing video...";
+      document.getElementById("video-info").innerHTML = "";
+      document.getElementById("task-result").innerText = "";
+      document.getElementById("download-status").classList.add("hidden");
+
+      try {
+        const res = await fetch("/fetch_formats", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url })
+        });
+        const data = await res.json();
+
+        if (data.status === "success") {
+          const wantedNotes = ["240p","360p","720p","1080p","1440p","2160p"];
+          const candidates = data.formats.filter(f => {
+            const note = (f.format_note || "").toLowerCase();
+            return wantedNotes.some(w => note.includes(w)) && ["mp4","webm"].includes(f.ext);
+          });
+
+          const grouped = {};
+          for (const f of candidates) {
+            const key = (f.format_note || `${f.height}p`).toLowerCase();
+            if (!grouped[key] || (f.filesize||0) > (grouped[key].filesize||0)) {
+              grouped[key] = f;
+            }
+          }
+
+          const finalFormats = Object.values(grouped);
+          const formatsHtml = finalFormats.map(f => {
+            const note = f.format_note || `${f.height}p`;
+            const sizeMB = f.filesize ? (f.filesize / (1024 * 1024)).toFixed(1) : 0;
+            const sizeText = f.filesize ? `${sizeMB}MB` : "未知大小";
+
+            const isTooBig = sizeMB > 300;
+            const buttonHtml = isTooBig
+              ? `<button disabled class="ml-4 px-4 py-2 bg-gray-600 rounded text-white text-sm cursor-not-allowed">Exceeds size limit</button>`
+              : `<button onclick="queueDownload('${url}','${f.format_id}')" data-download class="ml-4 px-4 py-2 bg-[#e11d48] hover:bg-[#be123c] rounded text-white text-sm">Download</button>`;
+
+            return `
+              <div class="flex justify-between items-center w-full max-w-md px-4 py-2 bg-gray-800 rounded">
+                <div class="flex-1 text-left text-white">${note} · ${sizeText}</div>
+                ${buttonHtml}
+              </div>`;
+          }).join("");
+
+          const displayTitle = data.title.length > 20 ? data.title.slice(0,20) + "…" : data.title;
+
+          document.getElementById("status").innerText = "";
+          document.getElementById("video-info").innerHTML = `
+            <img src="${data.thumbnail}" class="mx-auto rounded-lg shadow-lg max-w-xs" />
+            <div class="text-xl mt-2 mx-auto max-w-[80%] truncate" title="${data.title}">${displayTitle}</div>
+            <p class="text-sm text-gray-400">Duration: ${data.duration}</p>
+            <div class="flex flex-col items-center gap-3 mt-4">${formatsHtml}</div>
+          `;
+        } else {
+          document.getElementById("status").innerText = "❌ Failed to parse: " + data.message;
         }
-      }
-      const finalFormats = Object.values(grouped);
-
-      // 生成：左侧分辨率+大小，右侧 Download 按钮
-  const formatsHtml = finalFormats.map(f => {
-    const note = f.format_note || `${f.height}p`;
-    const sizeMB = f.filesize
-      ? (f.filesize / (1024 * 1024)).toFixed(1)
-      : 0;
-    const sizeText = f.filesize
-      ? `${sizeMB}MB`
-      : "未知大小";
-
-    const isTooBig = sizeMB > 200;
-
-    const buttonHtml = isTooBig
-      ? `<button disabled class="ml-4 px-4 py-2 bg-gray-600 rounded text-white text-sm cursor-not-allowed">
-            超出大小限制
-         </button>`
-      : `<button
-            onclick="queueDownload('${url}','${f.format_id}')"
-            class="ml-4 px-4 py-2 bg-[#e11d48] hover:bg-[#be123c] rounded text-white text-sm">
-            Download
-         </button>`;
-
-    return `
-        <div class="flex justify-between items-center w-full max-w-md px-4 py-2 bg-gray-800 rounded">
-          <div class="flex-1 text-left text-white">
-            ${note} · ${sizeText}
-          </div>
-          ${buttonHtml}
-        </div>
-    `;
-}).join("");
-
-      const fullTitle = data.title || "";
-      const displayTitle = fullTitle.length > 20
-        ? fullTitle.slice(0,20) + "…"
-        : fullTitle;
-
-      document.getElementById("status").innerText = "";
-      document.getElementById("video-info").innerHTML = `
-        <img src="${data.thumbnail}" class="mx-auto rounded-lg shadow-lg max-w-xs" />
-        <div class="text-xl mt-2 mx-auto max-w-[80%] truncate" title="${data.title}">
-          ${displayTitle}
-        </div>
-        <p class="text-sm text-gray-400">Duration: ${data.duration}</p>
-        <div class="flex flex-col items-center gap-3 mt-4">
-          ${formatsHtml}
-        </div>
-      `;
-    } else {
-      document.getElementById("status").innerText = "❌ Failed to parse: " + data.message;
-    }
-  } catch (err) {
-    console.error("解析异常:", err);
-    document.getElementById("status").innerText = "❌ Request failed. Please check the URL.";
-  }
-}
-
-
-async function queueDownload(url, format_id) {
-  
-  const progressBar = document.getElementById("new-progress-bar");
-  const progressText = document.getElementById("progress-text");
-  progressBar.style.width = "0%";
-  progressBar.innerText = "0%";
-  progressText.innerText = "0%";
-
-  document.getElementById("task-result").innerText = "📥 Submitting download task...";
-  document.getElementById("download-status").classList.remove("hidden");
-  try {
-    const res = await fetch(`/queue_download?url=${encodeURIComponent(url)}&format_id=${format_id}`);
-    const data = await res.json();
-
-    if (data.status === "queued") {
-      document.getElementById("task-result").innerText = "✅ Task added to queue";
-      document.getElementById("download-status").classList.remove("hidden");
-      checkDownloadStatus(url, format_id);
-    } else if (data.status === "done" && data.download_url) {
-      document.getElementById("task-result").innerHTML = `
-        <div class="text-green-400 font-bold">✅ Already downloaded.</div>
-        <a href="${data.download_url}" target="_blank" class="mt-4 inline-block px-6 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600">Open File</a>
-      `;
-      document.getElementById("download-status").classList.remove("hidden");
-    } else {
-      document.getElementById("task-result").innerText = "⚠️ " + (data.message || "Unknown error.");
-    }
-  } catch (err) {
-    document.getElementById("task-result").innerText = "❌ Download request failed.";
-  }
-}
-
-    
-async function checkDownloadStatus(url, format_id) {
-  const videoId = extractVideoId(url);
-  const progressBar = document.getElementById("new-progress-bar");
-  const progressText = document.getElementById("progress-text");
-  const statusEl = document.getElementById("task-result");
-
-  function getUserId() {
-    const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.startsWith('user_id=')) {
-        return cookie.substring('user_id='.length);
+      } catch (err) {
+        document.getElementById("status").innerText = "❌ Request failed. Please check the URL.";
       }
     }
-    return 'debug_user'; // 默认值
-  }
 
-  const userId = getUserId();
-  const wsProtocol = location.protocol === "https:" ? "wss" : "ws";
-  const wsUrl = `${wsProtocol}://${location.host}/ws/progress?user_id=${userId}&video_id=${videoId}`;
-  const socket = new WebSocket(wsUrl);
+    let currentDownloadUrl = null;
+    let currentFormatId = null;
 
-  console.log(`[WebSocket] Connecting to ${wsUrl}...`);
+    async function queueDownload(url, format_id) {
+      const allButtons = document.querySelectorAll("button[data-download]");
+      allButtons.forEach(btn => {
+        btn.disabled = true;
+        btn.classList.add("opacity-50", "cursor-not-allowed");
+      });
 
-  socket.onopen = () => {
-    console.log("[WebSocket] Connected!");
-  };
+      currentDownloadUrl = url;
+      currentFormatId = format_id;
 
-  socket.onmessage = async (event) => {
-  const data = JSON.parse(event.data);
+      const cancelButton = document.getElementById("cancel-download");
+      cancelButton.classList.remove("hidden");
 
-  if (data.status === 'uploaded' && data.download_url) {
-    socket.close();
+      const progressBar = document.getElementById("new-progress-bar");
+      const progressText = document.getElementById("progress-text");
+      progressBar.style.width = "0%";
+      progressBar.innerText = "0%";
+      progressText.innerText = "0%";
 
-    progressBar.style.width = "100%";
-    progressBar.innerText = "100%";
-    progressBar.className = "bg-blue-500 h-full rounded text-xs text-center text-white leading-6";
+      document.getElementById("task-result").innerText = "📥 Submitting download task...";
+      document.getElementById("download-status").classList.remove("hidden");
 
-    statusEl.innerHTML = `
-      <div class="text-green-400 font-bold">✅ Download and upload completed!</div>
-      <a href="${data.download_url}" target="_blank" class="mt-4 inline-block px-6 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600">Open File</a>
-    `;
-    progressText.innerText = "Completed";
+      try {
+        const res = await fetch(`/queue_download?url=${encodeURIComponent(url)}&format_id=${format_id}`);
+        const data = await res.json();
 
-  } else if (data.status === 'preparing') {
-    progressText.innerText = "Preparing download file, please wait...";
-    statusEl.innerHTML = `<div class="text-yellow-400 font-bold">📦 Preparing your download, please wait...</div>`;
-
-  } else if (data.status === 'downloading' && data.percent) {
-    // 🔥 新增：下载中实时更新进度
-    const percent = parseFloat(data.percent.replace('%', '')) || 0;
-    const displayPercent = `${percent.toFixed(1)}%`;
-    progressBar.style.width = displayPercent;
-    progressBar.innerText = displayPercent;
-    progressText.innerText = `Downloading: ${displayPercent} | Speed: ${data.speed || '-'} | ETA: ${data.eta || '-'}`;
-  }
-};
-
-  socket.onerror = (err) => {
-    console.error("[WebSocket] 连接错误", err);
-  };
-
-  socket.onclose = () => {
-    console.log("[WebSocket] 连接关闭");
-  };
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-  const urlInput = document.getElementById('url');
-  urlInput.addEventListener('keydown', function(event) {
-    if (event.key === 'Enter') {
-      event.preventDefault(); // 阻止默认的表单提交
-      urlInput.blur();         // 失焦
-      fetchFormats();          // 执行解析
+        if (data.status === "queued") {
+          document.getElementById("task-result").innerText = "✅ Task added to queue";
+          checkDownloadStatus(url, format_id);
+        } else if (data.status === "done" && data.download_url) {
+          document.getElementById("task-result").innerHTML = `<div class="text-green-400 font-bold">✅ Already downloaded.</div>
+            <a href="${data.download_url}" target="_blank" class="mt-4 inline-block px-6 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600">Open File</a>`;
+          cancelButton.classList.add("hidden");
+          restoreDownloadButtons();
+        } else {
+          document.getElementById("task-result").innerText = "⚠️ " + (data.message || "Unknown error.");
+          cancelButton.classList.add("hidden");
+          restoreDownloadButtons();
+        }
+      } catch (err) {
+        document.getElementById("task-result").innerText = "❌ Download request failed.";
+        cancelButton.classList.add("hidden");
+        restoreDownloadButtons();
+      }
     }
-  });
-});
 
+    document.getElementById("cancel-download").addEventListener("click", async function() {
+      if (!currentDownloadUrl) return;
+
+      try {
+        await fetch(`/cancel_download?url=${encodeURIComponent(currentDownloadUrl)}&format_id=${encodeURIComponent(currentFormatId)}`, { method: "POST" });
+
+        document.getElementById("task-result").innerText = "🛑 Download cancelled";
+        document.getElementById("cancel-download").classList.add("hidden");
+        document.getElementById("download-status").classList.add("hidden");
+        document.getElementById("progress-text").innerText = "0%";
+
+        const progressBar = document.getElementById("new-progress-bar");
+        progressBar.style.width = "0%";
+        progressBar.innerText = "0%";
+
+        currentDownloadUrl = null;
+        currentFormatId = null;
+        restoreDownloadButtons();
+      } catch (err) {
+        document.getElementById("task-result").innerText = "❌ Failed to cancel download";
+      }
+    });
+
+    async function checkDownloadStatus(url, format_id) {
+      const videoId = extractVideoId(url);
+      const progressBar = document.getElementById("new-progress-bar");
+      const progressText = document.getElementById("progress-text");
+      const statusEl = document.getElementById("task-result");
+
+      const userId = document.cookie.split("; ").find(row => row.startsWith("user_id="))?.split("=")[1] || "debug_user";
+      const wsUrl = `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/progress?user_id=${userId}&video_id=${videoId}`;
+      const socket = new WebSocket(wsUrl);
+
+      socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        if (data.status === "cancelled") {
+          socket.close();
+          restoreDownloadButtons();
+          return;
+        }
+
+        if (data.status === "uploaded" && data.download_url) {
+          socket.close();
+          document.getElementById("cancel-download").classList.add("hidden");
+          restoreDownloadButtons();
+
+          progressBar.style.width = "100%";
+          progressBar.innerText = "100%";
+          statusEl.innerHTML = `
+            <div class="text-green-400 font-bold">✅ Download and upload completed!</div>
+            <a href="${data.download_url}" download="${data.original_filename}" target="_blank"
+              class="mt-4 inline-block px-6 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600">Open File</a>`;
+        } else if (data.status === "downloading") {
+          const percent = parseFloat(data.percent.replace('%', '')) || 0;
+          const displayPercent = `${percent.toFixed(1)}%`;
+          progressBar.style.width = displayPercent;
+          progressBar.innerText = displayPercent;
+          progressText.innerText = `Downloading: ${displayPercent} | Speed: ${data.speed || '-'} | ETA: ${data.eta || '-'}`;
+
+          progressBar.classList.remove("bg-blue-500", "bg-yellow-500", "bg-green-500");
+          if (percent < 30) progressBar.classList.add("bg-blue-500");
+          else if (percent < 70) progressBar.classList.add("bg-yellow-500");
+          else progressBar.classList.add("bg-green-500");
+        }
+      };
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const urlInput = document.getElementById('url');
+      urlInput.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          urlInput.blur();
+          fetchFormats();
+        }
+      });
+    });
   </script>
 </body>
 </html>
